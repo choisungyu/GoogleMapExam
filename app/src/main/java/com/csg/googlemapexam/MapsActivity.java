@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.net.Uri;
 import android.os.Bundle;
@@ -25,6 +26,8 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.PolygonOptions;
+import com.google.android.gms.maps.model.PolylineOptions;
 
 public class MapsActivity extends FragmentActivity implements OnMapReadyCallback {
 
@@ -32,6 +35,10 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private GoogleMap mMap;
     private FusedLocationProviderClient mFusedLocationProviderClient;
     private LocationCallback mLocationCallback;
+
+    PolylineOptions mRectOptions = new PolylineOptions()
+            .color(Color.RED)
+            .width(5);
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -55,7 +62,11 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                     // ...
                     LatLng currentLocation = new LatLng(location.getLatitude(), location.getLongitude());
 
-                    mMap.moveCamera(CameraUpdateFactory.newLatLngZoom(currentLocation,15.0f));
+                    mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(currentLocation,15.0f));
+
+                    // 그리기
+                    mRectOptions.add(currentLocation);
+                    mMap.addPolyline(mRectOptions);
 
                 }
             };
@@ -108,7 +119,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                                            String[] permissions, int[] grantResults) {
         switch (requestCode) {
             case MY_PERMISSIONS_REQUEST_FINE_LOCATION: {
-                // If request is cancelled, the result arrays are empty.
                 if (grantResults.length > 0
                         && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
 
@@ -152,10 +162,18 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     private void startLocationUpdates() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
                 && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // 거부 됨
+            // 권한이 거부 됨
         } else {
-            // 허락 됨
-            mFusedLocationProviderClient.requestLocationUpdates(LocationRequest.create(),
+            // 권한이 허락 됨
+            // 자주 콜백이 호출 되도록
+            LocationRequest request = new LocationRequest();
+            request.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+            request.setInterval(10000);
+            request.setFastestInterval(5000);
+
+            mFusedLocationProviderClient.requestLocationUpdates(
+//                    LocationRequest.create(),
+                    request,
                     mLocationCallback,
                     null /* Looper */);
         }
@@ -164,6 +182,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
     @Override
     protected void onPause() {
         super.onPause();
+        // 지속적으로 현재 위치 얻게 하는것
         stopLocationUpdates();
     }
 
